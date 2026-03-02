@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevDeck - Developer Control Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --accent-primary: #3b82f6;
+            --accent-secondary: #8b5cf6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .logo-dot {
+            color: var(--accent-primary);
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+        }
+        
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover, nav a.active {
+            color: var(--text-primary);
+        }
+        
+        .container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            padding: 1.5rem;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .chart-container {
+            height: 200px;
+            margin-top: 1rem;
+        }
+        
+        .projects-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .project-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.5);
+        }
+        
+        .project-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .project-info p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .project-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--accent-secondary);
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .events-log {
+            height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+        }
+        
+        .log-entry.error {
+            color: var(--error);
+        }
+        
+        .log-entry.warning {
+            color: var(--warning);
+        }
+        
+        .log-entry.info {
+            color: var(--success);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <header class="glass">
+        <div class="logo">
+            <span>Dev</span><span class="logo-dot">●</span><span>Deck</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#" class="active">Dashboard</a></li>
+                <li><a href="#">Projects</a></li>
+                <li><a href="#">Logs</a></li>
+                <li><a href="#">Settings</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <div class="container">
+        <h1 class="section-title">System Overview</h1>
+        
+        <div class="dashboard-grid">
+            <!-- CPU Card -->
+            <div class="card glass">
+                <div class="card-header">
+                    <h2 class="card-title">CPU Usage</h2>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Current</span>
+                        <span id="cpu-current" class="stat-value">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Cores</span>
+                        <span id="cpu-cores" class="stat-value">0</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cpu-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Memory Card -->
+            <div class="card glass">
+                <div class="card-header">
+                    <h2 class="card-title">Memory Usage</h2>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Used</span>
+                        <span id="mem-used" class="stat-value">0 GB</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total</span>
+                        <span id="mem-total" class="stat-value">0 GB</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mem-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Disk Card -->
+            <div class="card glass">
+                <div class="card-header">
+                    <h2 class="card-title">Disk Usage</h2>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Used</span>
+                        <span id="disk-used" class="stat-value">0 GB</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Free</span>
+                        <span id="disk-free" class="stat-value">0 GB</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="disk-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <h1 class="section-title">Projects</h1>
+        
+        <div class="card glass">
+            <div class="card-header">
+                <h2 class="card-title">Active Projects</h2>
+                <button class="btn btn-primary">Add Project</button>
+            </div>
+            <div class="projects-list" id="projects-list">
+                <!-- Projects will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <h1 class="section-title">Recent Events</h1>
+        
+        <div class="card glass">
+            <div class="card-header">
+                <h2 class="card-title">Activity Log</h2>
+            </div>
+            <div class="events-log" id="events-log">
+                <!-- Log entries will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Connect to WebSocket
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socket = new WebSocket(protocol + '//' + window.location.host + '/ws');
+        
+        // Initialize charts
+        const cpuCtx = document.getElementById('cpu-chart').getContext('2d');
+        const memCtx = document.getElementById('mem-chart').getContext('2d');
+        const diskCtx = document.getElementById('disk-chart').getContext('2d');
+        
+        const cpuChart = new Chart(cpuCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'CPU %',
+                    data: [],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        const memChart = new Chart(memCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Memory GB',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        const diskChart = new Chart(diskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Used', 'Free'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: ['#3b82f6', '#1e293b']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+        
+        // Update charts with data
+        function updateCharts(data) {
+            const now = new Date().toLocaleTimeString();
+            
+            // Update CPU chart
+            cpuChart.data.labels.push(now);
+            cpuChart.data.datasets[0].data.push(data.cpu);
+            if (cpuChart.data.labels.length > 20) {
+                cpuChart.data.labels.shift();
+                cpuChart.data.datasets[0].data.shift();
+            }
+            cpuChart.update();
+            
+            // Update memory chart
+            const memUsedGB = (data.memory.used / (1024**3)).toFixed(2);
+            memChart.data.labels.push(now);
+            memChart.data.datasets[0].data.push(memUsedGB);
+            if (memChart.data.labels.length > 20) {
+                memChart.data.labels.shift();
+                memChart.data.datasets[0].data.shift();
+            }
+            memChart.update();
+            
+            // Update disk chart
+            const diskUsedPercent = data.disk.percent;
+            const diskFreePercent = 100 - diskUsedPercent;
+            diskChart.data.datasets[0].data = [diskUsedPercent, diskFreePercent];
+            diskChart.update();
+            
+            // Update stats display
+            document.getElementById('cpu-current').textContent = data.cpu.toFixed(1) + '%';
+            document.getElementById('cpu-cores').textContent = navigator.hardwareConcurrency || 'N/A';
+            document.getElementById('mem-used').textContent = memUsedGB + ' GB';
+            document.getElementById('mem-total').textContent = (data.memory.total / (1024**3)).toFixed(2) + ' GB';
+            document.getElementById('disk-used').textContent = (data.disk.used / (1024**3)).toFixed(2) + ' GB';
+            document.getElementById('disk-free').textContent = (data.disk.free / (1024**3)).toFixed(2) + ' GB';
+        }
+        
+        // Update projects list
+        function updateProjects(projects) {
+            const projectsList = document.getElementById('projects-list');
+            projectsList.innerHTML = '';
+            
+            projects.forEach(project => {
+                const projectElement = document.createElement('div');
+                projectElement.className = 'project-item';
+                projectElement.innerHTML = `
+                    <div class="project-info">
+                        <h3>${project.name}</h3>
+                        <p>${project.path}</p>
+                    </div>
+                    <div class="project-actions">
+                        <button class="btn btn-primary btn-sm">Start</button>
+                        <button class="btn btn-secondary btn-sm">Test</button>
+                    </div>
+                `;
+                projectsList.appendChild(projectElement);
+            });
+        }
+        
+        // Add log entry
+        function addLogEntry(message, type = 'info') {
+            const logContainer = document.getElementById('events-log');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // WebSocket event handlers
+        socket.onopen = function(event) {
+            console.log('Connected to WebSocket');
+            addLogEntry('Connected to DevDeck server', 'info');
+        };
+        
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            switch(data.type) {
+                case 'initial_data':
+                    updateProjects(data.data.projects);
+                    updateCharts(data.data.system_stats);
+                    break;
+                case 'system_stats':
+                    updateCharts(data.data);
+                    break;
+                case 'file_change':
+                    addLogEntry(`File ${data.data.event_type}: ${data.data.file_path}`, 'info');
+                    break;
+                case 'log_line':
+                    addLogEntry(data.data.line, data.data.level.toLowerCase());
+                    break;
+            }
+        };
+        
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            addLogEntry('WebSocket connection error', 'error');
+        };
+        
+        socket.onclose = function(event) {
+            console.log('WebSocket closed:', event);
+            addLogEntry('Disconnected from DevDeck server', 'warning');
+        };
+    </script>
+</body>
+</html>

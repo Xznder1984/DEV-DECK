@@ -1,0 +1,10 @@
+psutil
+watchdog
+fastapi
+uvicorn
+jinja2
+typer
+rich
+websockets
+python-dotenv
+requests
