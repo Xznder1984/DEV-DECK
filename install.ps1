@@ -94,11 +94,39 @@ Set-Location "$installDir\devdeck"
 
 # Install DevDeck
 Write-Host "Installing DevDeck..." -ForegroundColor Yellow
-& pip install --user .
+
+# Try regular installation first
+try {
+    & pip install --user . 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Regular installation failed"
+    }
+} catch {
+    Write-Host "Regular installation failed, this is expected on some systems..." -ForegroundColor Yellow
+}
+
+# Try with --user flag
+try {
+    & pip install --user . 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "User installation failed, trying global installation..." -ForegroundColor Yellow
+        # Try without --user flag
+        & pip install . 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Installation failed." -ForegroundColor Red
+            exit 1
+        }
+    }
+} catch {
+    Write-Host "Installation failed." -ForegroundColor Red
+    exit 1
+}
 
 # Find the user's Python scripts directory
-$userScriptsDir = (& python -m site --user-base) + "\Scripts"
-if (!(Test-Path $userScriptsDir)) {
+$userBase = & python -m site --user-base 2>$null
+if ($userBase) {
+    $userScriptsDir = Join-Path $userBase "Scripts"
+} else {
     $userScriptsDir = "$env:LOCALAPPDATA\Programs\Python\Python*\Scripts"
 }
 
@@ -106,12 +134,19 @@ if (!(Test-Path $userScriptsDir)) {
 Write-Host "Creating executable script..." -ForegroundColor Yellow
 $scriptContent = @'
 @echo off
+REM DevDeck launcher script
+
+REM Try to run the installed package first
 python -c "import devdeck" >nul 2>&1
 if %errorlevel% == 0 (
     python -m main %*
 ) else (
-    echo Error: DevDeck not found. Please reinstall.
-    exit /b 1
+    REM Fallback to direct execution
+    python "%~dp0\..\Lib\site-packages\devdeck\main.py" %*
+    if errorlevel 1 (
+        echo Error: DevDeck not found. Please reinstall.
+        exit /b 1
+    )
 )
 '@
 $scriptPath = "$userScriptsDir\devdeck.bat"

@@ -72,7 +72,17 @@ cd "$TEMP_DIR/devdeck"
 
 # Install DevDeck
 echo -e "${YELLOW}Installing DevDeck...${NC}"
-pip3 install --user .
+
+# Try regular installation first
+if ! pip3 install --user . 2>/dev/null; then
+    echo -e "${YELLOW}Regular installation failed, trying with --break-system-packages...${NC}"
+    
+    # Try with --break-system-packages for systems like Kali Linux
+    if ! pip3 install --user --break-system-packages . 2>/dev/null; then
+        echo -e "${RED}Installation failed. Please check the error messages above.${NC}"
+        exit 1
+    fi
+fi
 
 # Find the user's bin directory
 USER_BIN_DIR="$HOME/.local/bin"
@@ -89,26 +99,36 @@ cat > "$USER_BIN_DIR/devdeck" << 'EOF'
 #!/bin/bash
 # DevDeck launcher script
 
-# Find the installed package location
-PYTHON_USER_BASE=$(python3 -m site --user-base 2>/dev/null)
-if [ $? -ne 0 ]; then
-    PYTHON_USER_BASE="$HOME/.local"
-fi
-
 # Try to run the installed package first
 if python3 -c "import devdeck" &> /dev/null; then
     python3 -m main "$@"
 else
-    # Fallback to local installation
+    # Fallback to direct execution
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PROJECT_DIR="$(dirname "$SCRIPT_DIR")/lib/python*/site-packages/devdeck-*"
+    # Try to find main.py in common locations
+    POSSIBLE_PATHS=(
+        "$SCRIPT_DIR/../lib/python*/site-packages/devdeck/main.py"
+        "$HOME/.local/lib/python*/site-packages/devdeck/main.py"
+        "/usr/local/lib/python*/site-packages/devdeck/main.py"
+    )
     
-    if [ -f "$PROJECT_DIR/main.py" ]; then
-        python3 "$PROJECT_DIR/main.py" "$@"
-    else
-        echo "Error: DevDeck not found. Please reinstall."
-        exit 1
+    for pattern in "${POSSIBLE_PATHS[@]}"; do
+        for path in $pattern; do
+            if [ -f "$path" ]; then
+                python3 "$path" "$@"
+                exit $?
+            fi
+        done
+    done
+    
+    # Last resort: try to run from current directory
+    if [ -f "./main.py" ]; then
+        python3 ./main.py "$@"
+        exit $?
     fi
+    
+    echo "Error: DevDeck not found. Please reinstall."
+    exit 1
 fi
 EOF
 
